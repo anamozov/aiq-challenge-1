@@ -113,19 +113,13 @@ def main():
         json.dump(predictions, f, indent=2)
     print(f"Saved predictions to {predictions_file}")
     
-    # Convert ground truth to the format expected by eval.py
-    gt_file = "ground_truth.json"
-    with open(gt_file, 'w') as f:
-        json.dump(ground_truth, f, indent=2)
-    print(f"Saved ground truth to {gt_file}")
-    
-    # Run evaluation
+    # Run evaluation using the original COCO file directly
     print("\nRunning evaluation...")
     import subprocess
     result = subprocess.run([
         "python3", "scripts/eval.py", 
         "--pred", predictions_file,
-        "--gt", gt_file
+        "--gt", coco_file
     ], capture_output=True, text=True)
     
     print("Evaluation Results:")
@@ -134,7 +128,8 @@ def main():
         print("Errors:")
         print(result.stderr)
     
-    print(f"\nEvaluation completed. Check {predictions_file} and {gt_file} for detailed results.")
+    print(f"\nEvaluation completed. Check {predictions_file} for detailed results.")
+    print(f"Ground truth was loaded directly from: {coco_file}")
 
 
 if __name__ == "__main__":

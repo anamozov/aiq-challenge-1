@@ -102,15 +102,21 @@ def load_coco_annotations(coco_file: str) -> dict:
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--pred", type=str, required=True, help="Path to predictions JSON (COCO bbox format)")
-    parser.add_argument("--gt", type=str, required=True, help="Path to ground-truth JSON (COCO bbox format)")
+    parser.add_argument("--gt", type=str, required=True, help="Path to ground-truth JSON or COCO file")
     parser.add_argument("--iou-thr", type=float, default=0.5, help="IoU threshold for matching (default: 0.5)")
     args = parser.parse_args()
 
     # Load predictions (COCO bbox format)
     pred = json.loads(Path(args.pred).read_text(encoding="utf-8"))
     
-    # Load ground truth (COCO bbox format)
-    gt = json.loads(Path(args.gt).read_text(encoding="utf-8"))
+    # Load ground truth (check if it's COCO format or simple JSON)
+    gt_path = Path(args.gt)
+    if gt_path.suffix == '.json' and 'coco' in gt_path.name.lower():
+        # Load COCO format
+        gt = load_coco_annotations(args.gt)
+    else:
+        # Load simple JSON format
+        gt = json.loads(gt_path.read_text(encoding="utf-8"))
 
     # Expected format per image: {image_id: [[x, y, w, h], ...]} for both pred and gt
     image_ids = sorted(set(pred.keys()) & set(gt.keys()))
