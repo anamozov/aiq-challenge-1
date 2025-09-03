@@ -5,4 +5,8 @@ __pycache__/
 ./results/
 results/
 #everything in Dataset
-/Dataset/*
+Dataset/
+**/Dataset/
+
+#VS Code settings
+.vscode/

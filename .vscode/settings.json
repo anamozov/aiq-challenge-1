@@ -1,0 +1,23 @@
+{
+  "files.exclude": {
+    "**/Dataset/**": true,
+    "**/weights/**": true,
+    "**/__pycache__/**": true,
+    "**/.venv/**": true,
+    "**/results/**": true
+  },
+  "search.exclude": {
+    "**/Dataset/**": true,
+    "**/weights/**": true,
+    "**/__pycache__/**": true,
+    "**/.venv/**": true,
+    "**/results/**": true
+  },
+  "files.watcherExclude": {
+    "**/Dataset/**": true,
+    "**/weights/**": true,
+    "**/__pycache__/**": true,
+    "**/.venv/**": true,
+    "**/results/**": true
+  }
+}
