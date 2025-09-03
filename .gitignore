@@ -4,3 +4,5 @@ __pycache__/
 .idea/
 ./results/
 results/
+#everything in Dataset
+/Dataset/*
