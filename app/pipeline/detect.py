@@ -110,18 +110,25 @@ def segment_circles_and_mask(image_bgr: np.ndarray):
 
 def create_combined_image(image_bgr: np.ndarray, mask: np.ndarray, circles: list[Circle] = None):
     """
-    Create a combined image with original and mask side by side.
-    Also draw detected circles on the original image.
+    Create a combined image with original image (with bounding boxes) on the left and mask on the right.
     """
-    # Create a copy of the original image to draw circles on
+    # Create a copy of the original image to draw bounding boxes on
     display_img = image_bgr.copy()
     
-    # Draw detected circles on the image
+    # Draw bounding boxes for detected circles
     if circles:
-        for circle in circles:
-            cv2.circle(display_img, (int(circle.cx), int(circle.cy)), int(circle.r), (0, 255, 0), 2)
-            # Draw center point
+        for i, circle in enumerate(circles):
+            # Get bounding box coordinates
+            x, y, w, h = circle.bbox
+            
+            # Draw bounding box rectangle
+            cv2.rectangle(display_img, (x, y), (x + w, y + h), (0, 255, 0), 2)
+            
+            # Draw circle center point
             cv2.circle(display_img, (int(circle.cx), int(circle.cy)), 3, (0, 0, 255), -1)
+            
+            # Add circle number label
+            cv2.putText(display_img, f"{i+1}", (x, y-10), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 0), 2)
     
     # Convert mask to 3-channel for concatenation
     mask_colored = cv2.cvtColor(mask, cv2.COLOR_GRAY2BGR)
@@ -137,7 +144,7 @@ def create_combined_image(image_bgr: np.ndarray, mask: np.ndarray, circles: list
     combined = np.hstack((display_img_resized, mask_resized))
     
     # Add labels
-    cv2.putText(combined, "Original Image", (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255), 2)
+    cv2.putText(combined, "Original Image with Bounding Boxes", (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255), 2)
     cv2.putText(combined, "Detected Circles Mask", (display_img_resized.shape[1] + 10, 30), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255), 2)
     
     return combined
