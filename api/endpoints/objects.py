@@ -37,7 +37,7 @@ def detect_objects(image_id: int, db: Session = Depends(get_db)):
         db.query(Detection).filter(Detection.image_id == image_id).delete()
         
         # Save new detections
-        for circle in circles:
+        for circle, confidence in circles:
             # Generate unique object ID
             object_id = str(uuid.uuid4())
             
@@ -57,7 +57,7 @@ def detect_objects(image_id: int, db: Session = Depends(get_db)):
                 centroid_x=circle.cx,
                 centroid_y=circle.cy,
                 radius=circle.r,
-                confidence=0.95  # Default confidence for now
+                confidence=confidence
             )
             
             db.add(detection)

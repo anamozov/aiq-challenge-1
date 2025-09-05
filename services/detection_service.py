@@ -53,12 +53,12 @@ class DetectionService:
             transformed_circle = Circle(
                 cx=circle.cx + x_offset,
                 cy=circle.cy + y_offset,
-                r=circle.r
+                r=circle.r,
             )
             transformed_circles.append(transformed_circle)
         
         return transformed_circles
-    
+    # return confidence for each bbox which has a circle
     def detect_image(self, image_path):
         """
         Process a single image with hybrid detection
@@ -67,7 +67,7 @@ class DetectionService:
             image_path: Path to input image
             
         Returns:
-            List of detected circles
+            List of detected circles with confidence
         """
         # Load image
         image = cv2.imread(image_path)
@@ -84,7 +84,7 @@ class DetectionService:
         
         # Step 2: Process each detected region with CV detection algorithm
         print("Step 2: Processing each region with CV detection algorithm...")
-        all_circles = []
+        all_circles_with_confidence = []
         
         for i, (x1, y1, x2, y2, conf) in enumerate(yolo_detections):
             print(f"  Processing region {i+1}/{len(yolo_detections)} (confidence: {conf:.3f})")
@@ -105,14 +105,14 @@ class DetectionService:
                 
                 # Transform the largest circle to original image coordinates
                 transformed_circle = self.transform_circles_to_original([largest_circle], (x1, y1))[0]
-                all_circles.append(transformed_circle)
+                all_circles_with_confidence.append(transformed_circle, conf)
                 print(f"    Found {len(circles)} circles, kept largest (radius: {largest_circle.r:.1f})")
             else:
                 print(f"    No coins found in this region")
         
-        print(f"Total coins detected: {len(all_circles)}")
+        print(f"Total coins detected: {len(all_circles_with_confidence)}")
         
-        return all_circles
+        return all_circles_with_confidence
     
     def create_mask(self, image_shape, circles):
         """

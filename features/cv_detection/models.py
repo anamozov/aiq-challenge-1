@@ -19,7 +19,6 @@ class Circle:
     cx: float
     cy: float
     r: float
-
     @property
     def bbox(self):
         """
