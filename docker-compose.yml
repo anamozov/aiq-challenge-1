@@ -1,17 +1,23 @@
+
 version: '3.8'
 
 services:
   app:
     build: .
     ports:
-      - "8000:8000"
+      - "${API_PORT:-8000}:8000"
     volumes:
       # Mount storage directory for persistent data
-      - ./storage:/app/storage
+      - ${STORAGE_PATH:-./storage}:/app/storage
       # Mount models directory for model weights
-      - ./features/yolov11/weights:/app/features/yolov11/weights
+      - ${MODELS_PATH:-./features/yolov11/weights}:/app/features/yolov11/weights
     environment:
-      - PYTHONPATH=/app
+      - PYTHONPATH=${PYTHONPATH:-/app}
+      - PYTHONDONTWRITEBYTECODE=${PYTHONDONTWRITEBYTECODE:-1}
+      - PYTHONUNBUFFERED=${PYTHONUNBUFFERED:-1}
+      - DATABASE_URL=${DATABASE_URL:-sqlite:///./storage/detection.db}
+      - MAX_FILE_SIZE=${MAX_FILE_SIZE:-10485760}
+      - ALLOWED_EXTENSIONS=${ALLOWED_EXTENSIONS:-.jpg,.jpeg,.png,.bmp,.tiff}
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
@@ -20,17 +26,4 @@ services:
       retries: 3
       start_period: 40s
 
-  # Optional: Add a database service if you want to use PostgreSQL instead of SQLite
-  # postgres:
-  #   image: postgres:15
-  #   environment:
-  #     POSTGRES_DB: detection
-  #     POSTGRES_USER: postgres
-  #     POSTGRES_PASSWORD: postgres
-  #   volumes:
-  #     - postgres_data:/var/lib/postgresql/data
-  #   ports:
-  #     - "5432:5432"
-
-# volumes:
-#   postgres_data:
+ 

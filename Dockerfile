@@ -30,7 +30,7 @@ RUN pip install --no-cache-dir --upgrade pip && \
 COPY . .
 
 # Create necessary directories
-RUN mkdir -p storage/uploads storage/results storage/models
+RUN mkdir -p storage/uploads storage/results storage/models features/yolov11/weights
 
 # Make entrypoint script executable
 RUN chmod +x docker-entrypoint.sh
@@ -38,7 +38,12 @@ RUN chmod +x docker-entrypoint.sh
 # Create a non-root user
 RUN useradd --create-home --shell /bin/bash app && \
     chown -R app:app /app
+
+# Switch to non-root user
 USER app
+
+# Ensure directories exist and have proper permissions
+RUN mkdir -p /app/storage/uploads /app/storage/results /app/storage/models /app/features/yolov11/weights
 
 # Expose port
 EXPOSE 8000

@@ -11,7 +11,7 @@ from pathlib import Path
 BASE_DIR = Path(__file__).parent.parent
 
 # Database settings
-DATABASE_URL = "sqlite:///./detection.db"
+DATABASE_URL = "sqlite:///./storage/detection.db"
 
 # Storage settings
 STORAGE_DIR = BASE_DIR / "storage"
