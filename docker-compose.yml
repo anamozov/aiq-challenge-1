@@ -18,7 +18,10 @@ services:
       - DATABASE_URL=${DATABASE_URL:-sqlite:///./storage/detection.db}
       - MAX_FILE_SIZE=${MAX_FILE_SIZE:-10485760}
       - ALLOWED_EXTENSIONS=${ALLOWED_EXTENSIONS:-.jpg,.jpeg,.png,.bmp,.tiff}
+      - NVIDIA_VISIBLE_DEVICES=all
+      - NVIDIA_DRIVER_CAPABILITIES=compute,utility
     restart: unless-stopped
+    runtime: nvidia
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
       interval: 30s

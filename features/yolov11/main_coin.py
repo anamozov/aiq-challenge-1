@@ -19,9 +19,17 @@ import tqdm
 import yaml
 from torch.utils import data
 
-from .nets import nn
-from .utils import util
-from .utils.dataset import Dataset
+# Fix imports for standalone execution
+import sys
+from pathlib import Path
+
+# Add current directory to path for imports
+current_dir = Path(__file__).parent
+sys.path.insert(0, str(current_dir))
+
+from nets import nn
+from utils import util
+from utils.dataset import Dataset
 
 warnings.filterwarnings("ignore")
 
@@ -33,23 +41,7 @@ if os.getcwd() != BASE_DIR:
 	except Exception:
 		pass
 
-# Create module mapping for loading models trained with original module structure
-import importlib.util
-import types
-
-# Create a temporary module for 'nets' to handle model loading
-nets_module = types.ModuleType('nets')
-nets_module.nn = sys.modules['app.yolov11.nets.nn']
-sys.modules['nets'] = nets_module
-
-# Create a temporary module for 'utils' to handle model loading  
-utils_module = types.ModuleType('utils')
-utils_module.util = sys.modules['app.yolov11.utils.util']
-sys.modules['utils'] = utils_module
-
-# Also create the nested module structure that the model expects
-sys.modules['nets.nn'] = sys.modules['app.yolov11.nets.nn']
-sys.modules['utils.util'] = sys.modules['app.yolov11.utils.util']
+# Module mapping removed - using direct imports instead
 
 
 data_dir = 'Dataset/COCO'

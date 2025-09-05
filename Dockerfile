@@ -1,5 +1,5 @@
-# Use Python 3.10 slim image as base
-FROM python:3.10-slim
+# Use PyTorch with CUDA support
+FROM pytorch/pytorch:2.0.1-cuda11.7-cudnn8-runtime
 
 # Set working directory
 WORKDIR /app
