@@ -18,165 +18,36 @@ import os
 import sys
 import cv2
 import numpy as np
-import torch
 import argparse
 from pathlib import Path
-from typing import List, Tuple, Optional
-import yaml
 
 # Add the project root to the path
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
-from app.pipeline.detect import segment_circles_and_mask, Circle, create_combined_image
-from app.yolov11.nets import nn
-from app.yolov11.utils import util
+from features.yolov11 import YOLOv11Detector
+from features.cv_detection import CVDetector, Circle
 
-# Create module mapping for loading models trained with original module structure
-import importlib.util
-import types
-
-# Create a temporary module for 'nets' to handle model loading
-nets_module = types.ModuleType('nets')
-nets_module.nn = sys.modules['app.yolov11.nets.nn']
-sys.modules['nets'] = nets_module
-
-# Create a temporary module for 'utils' to handle model loading  
-utils_module = types.ModuleType('utils')
-utils_module.util = sys.modules['app.yolov11.utils.util']
-sys.modules['utils'] = utils_module
-
-# Also create the nested module structure that the model expects
-sys.modules['nets.nn'] = sys.modules['app.yolov11.nets.nn']
-sys.modules['utils.util'] = sys.modules['app.yolov11.utils.util']
 
 
 class HybridDetector:
-    def __init__(self, model_path: str = "app/yolov11/weights/best.pt", input_size: int = 640):
+    def __init__(self, model_path="features/yolov11/weights/best.pt", input_size=640):
         """
-        Initialize the hybrid detector with YOLOv11 model.
+        Initialize the hybrid detector with YOLOv11 and CV detection.
         
         Args:
             model_path: Path to the trained YOLOv11 model
             input_size: Input size for YOLOv11 model
         """
         self.input_size = input_size
-        self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-        print(f"Using device: {self.device}")
         
-        # Load YOLOv11 model
-        self.model = self._load_model(model_path)
+        # Initialize YOLOv11 detector
+        self.yolo_detector = YOLOv11Detector(model_path, input_size)
         
-        # Load class names
-        self.class_names = self._load_class_names()
+        # Initialize CV detector
+        self.cv_detector = CVDetector()
         
-    def _load_model(self, model_path: str):
-        """Load the trained YOLOv11 model."""
-        if not os.path.exists(model_path):
-            raise FileNotFoundError(f"Model file not found: {model_path}")
-            
-        print(f"Loading YOLOv11 model from: {model_path}")
-        model_data = torch.load(model_path, map_location=self.device, weights_only=False)
-        model = model_data['model'].float().fuse()
-        model.half()  # Use half precision for faster inference
-        model.eval()
-        model.to(self.device)
-        
-        return model
     
-    def _load_class_names(self):
-        """Load class names from coin_args.yaml."""
-        yaml_path = "app/yolov11/utils/coin_args.yaml"
-        if os.path.exists(yaml_path):
-            with open(yaml_path, 'r') as f:
-                config = yaml.safe_load(f)
-                return config.get('names', {0: 'coin'})
-        return {0: 'coin'}
-    
-    def _preprocess_image(self, image: np.ndarray) -> Tuple[torch.Tensor, float, float]:
-        """
-        Preprocess image for YOLOv11 inference.
-        
-        Returns:
-            preprocessed_tensor: Preprocessed image tensor
-            scale_x: Scale factor for x coordinates
-            scale_y: Scale factor for y coordinates
-        """
-        h, w = image.shape[:2]
-        
-        # Resize image to model input size while maintaining aspect ratio
-        scale = min(self.input_size / w, self.input_size / h)
-        new_w = int(w * scale)
-        new_h = int(h * scale)
-        
-        # Resize image
-        resized = cv2.resize(image, (new_w, new_h))
-        
-        # Create padded image
-        padded = np.full((self.input_size, self.input_size, 3), 114, dtype=np.uint8)
-        padded[:new_h, :new_w] = resized
-        
-        # Convert to tensor and normalize
-        tensor = torch.from_numpy(padded).permute(2, 0, 1).float()
-        tensor = tensor / 255.0
-        tensor = tensor.unsqueeze(0)  # Add batch dimension
-        tensor = tensor.half()  # Convert to half precision to match model
-        
-        return tensor.to(self.device), scale, scale
-    
-    def _postprocess_detections(self, outputs: torch.Tensor, scale_x: float, scale_y: float, 
-                              original_shape: Tuple[int, int]) -> List[Tuple[int, int, int, int, float]]:
-        """
-        Postprocess YOLOv11 outputs to get bounding boxes in original image coordinates.
-        
-        Returns:
-            List of (x1, y1, x2, y2, confidence) tuples
-        """
-        # Apply NMS
-        outputs = util.non_max_suppression(outputs, confidence_threshold=0.25, iou_threshold=0.45)
-        
-        detections = []
-        if outputs[0] is not None and len(outputs[0]) > 0:
-            for detection in outputs[0]:
-                x1, y1, x2, y2, conf, cls = detection.cpu().numpy()
-                
-                # Scale back to original image coordinates
-                x1 = int(x1 / scale_x)
-                y1 = int(y1 / scale_y)
-                x2 = int(x2 / scale_x)
-                y2 = int(y2 / scale_y)
-                
-                # Clamp to image boundaries
-                h, w = original_shape[:2]
-                x1 = max(0, min(x1, w))
-                y1 = max(0, min(y1, h))
-                x2 = max(0, min(x2, w))
-                y2 = max(0, min(y2, h))
-                
-                detections.append((x1, y1, x2, y2, conf))
-        
-        return detections
-    
-    def detect_with_yolo(self, image: np.ndarray) -> List[Tuple[int, int, int, int, float]]:
-        """
-        Detect objects using YOLOv11 model.
-        
-        Returns:
-            List of (x1, y1, x2, y2, confidence) tuples
-        """
-        # Preprocess image
-        tensor, scale_x, scale_y = self._preprocess_image(image)
-        
-        # Run inference
-        with torch.no_grad():
-            outputs = self.model(tensor)
-        
-        # Postprocess detections
-        detections = self._postprocess_detections(outputs, scale_x, scale_y, image.shape)
-        
-        return detections
-    
-    def crop_region(self, image: np.ndarray, bbox: Tuple[int, int, int, int], 
-                   padding: int = 20) -> np.ndarray:
+    def crop_region(self, image, bbox, padding=20):
         """
         Crop a region from the image with padding.
         
@@ -199,17 +70,17 @@ class HybridDetector:
         
         return image[y1:y2, x1:x2]
     
-    def detect_coins_in_crop(self, cropped_image: np.ndarray) -> Tuple[np.ndarray, List[Circle]]:
+    def detect_coins_in_crop(self, cropped_image):
         """
-        Apply detect.py algorithm to cropped image to find precise coin boundaries.
+        Apply CV detection algorithm to cropped image to find precise coin boundaries.
         
         Returns:
             mask: Binary mask of detected coins
             circles: List of detected circles
         """
-        return segment_circles_and_mask(cropped_image)
+        return self.cv_detector.detect(cropped_image)
     
-    def transform_circles_to_original(self, circles: List[Circle], crop_offset: Tuple[int, int]) -> List[Circle]:
+    def transform_circles_to_original(self, circles, crop_offset):
         """
         Transform circle coordinates from cropped image to original image coordinates.
         
@@ -233,7 +104,7 @@ class HybridDetector:
         
         return transformed_circles
     
-    def create_final_mask(self, image_shape: Tuple[int, int], all_circles: List[Circle]) -> np.ndarray:
+    def create_final_mask(self, image_shape, all_circles):
         """
         Create final mask in original image coordinates.
         
@@ -252,7 +123,7 @@ class HybridDetector:
         
         return mask
     
-    def create_combined_image_with_yolo_boxes(self, image: np.ndarray, mask: np.ndarray, yolo_detections: List[Tuple[int, int, int, int, float]]) -> np.ndarray:
+    def create_combined_image_with_yolo_boxes(self, image, mask, yolo_detections):
         """
         Create combined image with YOLO bounding boxes on the left and mask on the right.
         
@@ -295,7 +166,7 @@ class HybridDetector:
         
         return combined
     
-    def process_image(self, image_path: str) -> Tuple[np.ndarray, np.ndarray, List[Circle], List[Tuple[int, int, int, int, float]]]:
+    def process_image(self, image_path):
         """
         Process a single image with hybrid detection.
         
@@ -318,11 +189,11 @@ class HybridDetector:
         
         # Step 1: Detect objects with YOLOv11
         print("Step 1: Running YOLOv11 detection...")
-        yolo_detections = self.detect_with_yolo(image)
+        yolo_detections = self.yolo_detector.detect(image)
         print(f"YOLOv11 detected {len(yolo_detections)} potential coin regions")
         
-        # Step 2: Process each detected region with detect.py algorithm
-        print("Step 2: Processing each region with detect.py algorithm...")
+        # Step 2: Process each detected region with CV detection algorithm
+        print("Step 2: Processing each region with CV detection algorithm...")
         all_circles = []
         
         for i, (x1, y1, x2, y2, conf) in enumerate(yolo_detections):
@@ -361,7 +232,7 @@ class HybridDetector:
 def main():
     parser = argparse.ArgumentParser(description='Hybrid coin detection using YOLOv11 + detect.py')
     parser.add_argument('image_path', help='Path to input image')
-    parser.add_argument('--model-path', default='app/yolov11/weights/best.pt', help='Path to YOLOv11 model')
+    parser.add_argument('--model-path', default='features/yolov11/weights/best.pt', help='Path to YOLOv11 model')
     parser.add_argument('--output-dir', default='results', help='Output directory for results')
     parser.add_argument('--input-size', type=int, default=640, help='YOLOv11 input size')
     

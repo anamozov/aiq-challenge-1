@@ -18,8 +18,8 @@ def process_all_test_images():
     """Process all images from testfile file."""
     
     # Paths
-    testfile = "app/yolov11/Dataset/COCO/train2017.txt"
-    dataset_base = "app/yolov11/Dataset/COCO"
+    testfile = "features/yolov11/Dataset/COCO/train2017.txt"
+    dataset_base = "features/yolov11/Dataset/COCO"
     output_dir = "improved_result"
     
     # Check if testfile exists
