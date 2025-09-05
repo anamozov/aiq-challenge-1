@@ -98,7 +98,7 @@ def get_objects_for_image(image_id: int, db: Session = Depends(get_db)):
                 "y": detection.centroid_y
             },
             radius=detection.radius,
-            confidence=detection.confidence
+            confidence=f"{detection.confidence:.2f}"
         )
         objects.append(object_info)
     
@@ -137,7 +137,7 @@ def get_object_details(object_id: str, db: Session = Depends(get_db)):
             "y": detection.centroid_y
         },
         radius=detection.radius,
-        confidence=detection.confidence,
+        confidence=f"{detection.confidence:.2f}",
         created_at=detection.created_at
     )
 
@@ -167,7 +167,7 @@ def list_all_objects(skip: int = 0, limit: int = 100, db: Session = Depends(get_
                 "y": detection.centroid_y
             },
             radius=detection.radius,
-            confidence=detection.confidence,
+            confidence=f"{detection.confidence:.2f}",
             created_at=detection.created_at
         ))
     

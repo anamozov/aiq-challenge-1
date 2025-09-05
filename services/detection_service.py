@@ -105,7 +105,7 @@ class DetectionService:
                 
                 # Transform the largest circle to original image coordinates
                 transformed_circle = self.transform_circles_to_original([largest_circle], (x1, y1))[0]
-                all_circles_with_confidence.append(transformed_circle, conf)
+                all_circles_with_confidence.append((transformed_circle, conf))
                 print(f"    Found {len(circles)} circles, kept largest (radius: {largest_circle.r:.1f})")
             else:
                 print(f"    No coins found in this region")
