@@ -7,7 +7,7 @@ from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
 from models.database import get_db
 from models.tables import Image, Detection
-from models.schemas import ImageObjectsResponse, ObjectDetailsResponse, ObjectInfo
+from models.schemas import ImageObjectsResponse, ObjectDetailsResponse, ObjectInfo, EvaluationResponse, EvaluationRequest
 from services.detection_service import DetectionService
 from core.config import settings
 from core.logging_config import get_logger
@@ -362,3 +362,71 @@ def save_visual_results(image_id: int, db: Session = Depends(get_db)):
         
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error saving visual results: {str(e)}")
+
+@router.post("/evaluate", response_model=EvaluationResponse)
+def evaluate_model(request: EvaluationRequest = None, db: Session = Depends(get_db)):
+    """
+    Evaluate the YOLOv11 model on validation dataset (replicates main_coin.py --test)
+    
+    This endpoint runs model evaluation and returns precision, recall, mAP50, and mAP metrics.
+    """
+    try:
+        # Import evaluation service
+        from services.evaluation_service import EvaluationService
+        
+        # Initialize evaluation service
+        evaluation_service = EvaluationService()
+        
+        # Get model info
+        model_info = evaluation_service.get_model_info()
+        
+        # Set default values if request is None
+        if request is None:
+            request = EvaluationRequest()
+        
+        # Run evaluation
+        logger.info(f"Starting model evaluation with input_size={request.input_size}, batch_size={request.batch_size}")
+        
+        import time
+        start_time = time.time()
+        
+        metrics = evaluation_service.evaluate_model(
+            input_size=request.input_size,
+            batch_size=request.batch_size
+        )
+        
+        end_time = time.time()
+        evaluation_time = f"{end_time - start_time:.2f} seconds"
+        
+        # Store evaluation results in database
+        from models.tables import Evaluation
+        evaluation_record = Evaluation(
+            image_id=0,  # Use 0 for model-level evaluation (no specific image)
+            evaluation_type="model_evaluation",
+            metric_name="comprehensive",
+            metric_value=metrics.get("mAP", 0.0),
+            details=f"Precision: {metrics.get('precision', 0):.3f}, Recall: {metrics.get('recall', 0):.3f}, mAP50: {metrics.get('mAP50', 0):.3f}, mAP: {metrics.get('mAP', 0):.3f}"
+        )
+        db.add(evaluation_record)
+        db.commit()
+        
+        return EvaluationResponse(
+            success=True,
+            message="Model evaluation completed successfully",
+            metrics=metrics,
+            model_info=model_info,
+            evaluation_time=evaluation_time
+        )
+        
+    except FileNotFoundError as e:
+        logger.error(f"Model or dataset not found: {e}")
+        raise HTTPException(
+            status_code=404, 
+            detail=f"Model or dataset not found: {str(e)}"
+        )
+    except Exception as e:
+        logger.error(f"Evaluation failed: {e}")
+        raise HTTPException(
+            status_code=500, 
+            detail=f"Model evaluation failed: {str(e)}"
+        )

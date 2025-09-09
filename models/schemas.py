@@ -4,7 +4,7 @@ Pydantic schemas for API requests and responses
 
 from pydantic import BaseModel
 from datetime import datetime
-from typing import List, Optional
+from typing import List, Optional, Dict
 
 # Base schemas
 class ImageBase(BaseModel):
@@ -96,3 +96,20 @@ class UploadResponse(BaseModel):
 class ErrorResponse(BaseModel):
     error: str
     detail: Optional[str] = None
+
+# Evaluation schemas
+class EvaluationResponse(BaseModel):
+    success: bool
+    message: str
+    metrics: Dict[str, any]  # Allow mixed types for metrics
+    model_info: Dict[str, str]  # Changed from any to str for compatibility
+    evaluation_time: Optional[str] = None
+    
+    class Config:
+        protected_namespaces = ()  # Allow model_info field
+        arbitrary_types_allowed = True  # Allow any types
+
+class EvaluationRequest(BaseModel):
+    input_size: Optional[int] = 640
+    batch_size: Optional[int] = 4
+    save_plots: Optional[bool] = False

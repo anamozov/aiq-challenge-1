@@ -311,18 +311,18 @@
                     <div id="visualization-result"></div>
                 </div>
                 
-                <!-- Batch Operations -->
+                <!-- Model Evaluation -->
                 <div class="section">
-                    <h2>⚡ Batch Operations</h2>
+                    <h2>📊 Model Evaluation</h2>
                     <div class="form-group">
-                        <label for="batchImageIds">Image IDs (comma-separated):</label>
-                        <input type="text" id="batchImageIds" placeholder="1,2,3,4,5">
+                        <label for="evalBatchSize">Batch Size:</label>
+                        <input type="number" id="evalBatchSize" placeholder="4" min="1" max="16" value="4">
                     </div>
                     <div class="button-group">
-                        <button onclick="batchDetection()">Batch Detection</button>
-                        <button onclick="batchVisualization()">Batch Visualization</button>
+                        <button onclick="runModelEvaluation()">Run Model Evaluation</button>
+                        <button onclick="getModelInfo()">Get Model Info</button>
                     </div>
-                    <div id="batch-result"></div>
+                    <div id="evaluation-result"></div>
                 </div>
                 
                 <!-- Advanced Features -->
@@ -731,108 +731,6 @@
             }
         }
         
-        async function batchDetection() {
-            const imageIds = document.getElementById('batchImageIds').value;
-            const resultDiv = document.getElementById('batch-result');
-            
-            if (!imageIds) {
-                showError(resultDiv, 'Please enter image IDs');
-                return;
-            }
-            
-            const ids = imageIds.split(',').map(id => id.trim()).filter(id => id);
-            if (ids.length === 0) {
-                showError(resultDiv, 'Please enter valid image IDs');
-                return;
-            }
-            
-            try {
-                showLoading(resultDiv, `Running detection on ${ids.length} images...`);
-                
-                let results = [];
-                for (let i = 0; i < ids.length; i++) {
-                    const imageId = ids[i];
-                    try {
-                        const response = await fetch(`${API_BASE}/objects/detect/${imageId}`, {
-                            method: 'POST'
-                        });
-                        const data = await response.json();
-                        results.push({ imageId, success: response.ok, data });
-                    } catch (error) {
-                        results.push({ imageId, success: false, error: error.message });
-                    }
-                }
-                
-                let html = '<div class="success">Batch detection completed!</div><div class="results">';
-                results.forEach(result => {
-                    if (result.success) {
-                        html += `<div style="padding: 10px; border: 1px solid #27ae60; margin: 5px 0; border-radius: 5px; background: #d5f4e6;">
-                            <strong>Image ${result.imageId}:</strong> ✅ Found ${result.data.object_count} objects
-                        </div>`;
-                    } else {
-                        html += `<div style="padding: 10px; border: 1px solid #e74c3c; margin: 5px 0; border-radius: 5px; background: #fadbd8;">
-                            <strong>Image ${result.imageId}:</strong> ❌ ${result.error || 'Failed'}
-                        </div>`;
-                    }
-                });
-                html += '</div>';
-                resultDiv.innerHTML = html;
-            } catch (error) {
-                showError(resultDiv, 'Batch detection failed: ' + error.message);
-            }
-        }
-        
-        async function batchVisualization() {
-            const imageIds = document.getElementById('batchImageIds').value;
-            const resultDiv = document.getElementById('batch-result');
-            
-            if (!imageIds) {
-                showError(resultDiv, 'Please enter image IDs');
-                return;
-            }
-            
-            const ids = imageIds.split(',').map(id => id.trim()).filter(id => id);
-            if (ids.length === 0) {
-                showError(resultDiv, 'Please enter valid image IDs');
-                return;
-            }
-            
-            try {
-                showLoading(resultDiv, `Generating visualizations for ${ids.length} images...`);
-                
-                let results = [];
-                for (let i = 0; i < ids.length; i++) {
-                    const imageId = ids[i];
-                    try {
-                        const response = await fetch(`${API_BASE}/objects/visual/${imageId}/save`, {
-                            method: 'POST'
-                        });
-                        const data = await response.json();
-                        results.push({ imageId, success: response.ok, data });
-                    } catch (error) {
-                        results.push({ imageId, success: false, error: error.message });
-                    }
-                }
-                
-                let html = '<div class="success">Batch visualization completed!</div><div class="results">';
-                results.forEach(result => {
-                    if (result.success) {
-                        html += `<div style="padding: 10px; border: 1px solid #27ae60; margin: 5px 0; border-radius: 5px; background: #d5f4e6;">
-                            <strong>Image ${result.imageId}:</strong> ✅ Visualizations saved
-                        </div>`;
-                    } else {
-                        html += `<div style="padding: 10px; border: 1px solid #e74c3c; margin: 5px 0; border-radius: 5px; background: #fadbd8;">
-                            <strong>Image ${result.imageId}:</strong> ❌ ${result.error || 'Failed'}
-                        </div>`;
-                    }
-                });
-                html += '</div>';
-                resultDiv.innerHTML = html;
-            } catch (error) {
-                showError(resultDiv, 'Batch visualization failed: ' + error.message);
-            }
-        }
-        
         async function exportData() {
             const resultDiv = document.getElementById('advanced-result');
             
@@ -1012,6 +910,122 @@
                 resultDiv.innerHTML = html;
             } catch (error) {
                 showError(resultDiv, 'Failed to load statistics: ' + error.message);
+            }
+        }
+        
+        // MODEL EVALUATION FUNCTIONS
+        
+        async function runModelEvaluation() {
+            const resultDiv = document.getElementById('evaluation-result');
+            const batchSize = document.getElementById('evalBatchSize').value || 4;
+            
+            try {
+                showLoading(resultDiv, 'Running model evaluation... This may take several minutes.');
+                
+                const requestBody = {
+                    input_size: 640,  // Fixed input size like main_coin.py
+                    batch_size: parseInt(batchSize),
+                    save_plots: false
+                };
+                
+                const response = await fetch(`${API_BASE}/objects/evaluate`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(requestBody)
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    let html = '<div class="success">Model evaluation completed successfully!</div><div class="results">';
+                    
+                    // Display metrics
+                    html += `
+                        <div style="padding: 15px; border: 1px solid #27ae60; margin: 10px 0; border-radius: 5px; background: #d5f4e6;">
+                            <h3 style="margin-top: 0; color: #27ae60;">📊 Evaluation Metrics</h3>
+                            <strong>Precision:</strong> ${data.metrics.precision.toFixed(3)}<br>
+                            <strong>Recall:</strong> ${data.metrics.recall.toFixed(3)}<br>
+                            <strong>mAP@50:</strong> ${data.metrics.mAP50.toFixed(3)}<br>
+                            <strong>mAP:</strong> ${data.metrics.mAP.toFixed(3)}<br>
+                            <strong>Total Images:</strong> ${data.metrics.total_images}<br>
+                            <strong>Device:</strong> ${data.metrics.device}<br>
+                            <strong>Evaluation Time:</strong> ${data.evaluation_time}
+                        </div>
+                    `;
+                    
+                    // Display model info
+                    if (data.model_info) {
+                        html += `
+                            <div style="padding: 15px; border: 1px solid #3498db; margin: 10px 0; border-radius: 5px; background: #ebf3fd;">
+                                <h3 style="margin-top: 0; color: #3498db;">🤖 Model Information</h3>
+                                <strong>Model Type:</strong> ${data.model_info.model_type}<br>
+                                <strong>Total Parameters:</strong> ${data.model_info.total_parameters.toLocaleString()}<br>
+                                <strong>Trainable Parameters:</strong> ${data.model_info.trainable_parameters.toLocaleString()}<br>
+                                <strong>CUDA Available:</strong> ${data.model_info.cuda_available ? 'Yes' : 'No'}<br>
+                                <strong>Weights Path:</strong> ${data.model_info.weights_path}
+                            </div>
+                        `;
+                    }
+                    
+                    html += '</div>';
+                    resultDiv.innerHTML = html;
+                } else {
+                    showError(resultDiv, data.detail || 'Model evaluation failed');
+                }
+            } catch (error) {
+                showError(resultDiv, 'Model evaluation failed: ' + error.message);
+            }
+        }
+        
+        async function getModelInfo() {
+            const resultDiv = document.getElementById('evaluation-result');
+            
+            try {
+                showLoading(resultDiv, 'Getting model information...');
+                
+                // First run a quick evaluation to get model info
+                const response = await fetch(`${API_BASE}/objects/evaluate`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        input_size: 640,
+                        batch_size: 1,
+                        save_plots: false
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    let html = '<div class="success">Model information retrieved!</div><div class="results">';
+                    
+                    if (data.model_info) {
+                        html += `
+                            <div style="padding: 15px; border: 1px solid #3498db; margin: 10px 0; border-radius: 5px; background: #ebf3fd;">
+                                <h3 style="margin-top: 0; color: #3498db;">🤖 Model Information</h3>
+                                <strong>Model Type:</strong> ${data.model_info.model_type}<br>
+                                <strong>Model Loaded:</strong> ${data.model_info.model_loaded ? 'Yes' : 'No'}<br>
+                                <strong>Device:</strong> ${data.model_info.device}<br>
+                                <strong>Total Parameters:</strong> ${data.model_info.total_parameters.toLocaleString()}<br>
+                                <strong>Trainable Parameters:</strong> ${data.model_info.trainable_parameters.toLocaleString()}<br>
+                                <strong>CUDA Available:</strong> ${data.model_info.cuda_available ? 'Yes' : 'No'}<br>
+                                <strong>Weights Path:</strong> ${data.model_info.weights_path}<br>
+                                <strong>Classes:</strong> ${JSON.stringify(data.model_info.classes)}
+                            </div>
+                        `;
+                    }
+                    
+                    html += '</div>';
+                    resultDiv.innerHTML = html;
+                } else {
+                    showError(resultDiv, data.detail || 'Failed to get model information');
+                }
+            } catch (error) {
+                showError(resultDiv, 'Failed to get model information: ' + error.message);
             }
         }
     </script>
