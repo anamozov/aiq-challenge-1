@@ -1,0 +1,1019 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AIQ Challenge 1 - Coin Detection API</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+        
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+        
+        .header p {
+            font-size: 1.2em;
+            opacity: 0.9;
+        }
+        
+        .main-content {
+            padding: 30px;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+        }
+        
+        .left-column, .right-column {
+            display: flex;
+            flex-direction: column;
+            gap: 30px;
+        }
+        
+        @media (max-width: 1200px) {
+            .main-content {
+                grid-template-columns: 1fr;
+            }
+        }
+        
+        .section {
+            margin-bottom: 40px;
+            padding: 25px;
+            border: 1px solid #e0e0e0;
+            border-radius: 10px;
+            background: #fafafa;
+        }
+        
+        .section h2 {
+            color: #2c3e50;
+            margin-bottom: 20px;
+            font-size: 1.5em;
+            border-bottom: 2px solid #3498db;
+            padding-bottom: 10px;
+        }
+        
+        .form-group {
+            margin-bottom: 20px;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #34495e;
+        }
+        
+        input[type="file"], input[type="number"], select, button {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            font-size: 16px;
+            transition: border-color 0.3s;
+        }
+        
+        input[type="file"]:focus, input[type="number"]:focus, select:focus {
+            outline: none;
+            border-color: #3498db;
+        }
+        
+        button {
+            background: linear-gradient(135deg, #3498db 0%, #2980b9 100%);
+            color: white;
+            border: none;
+            cursor: pointer;
+            font-weight: 600;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(52, 152, 219, 0.4);
+        }
+        
+        button:disabled {
+            background: #bdc3c7;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+        
+        .button-group {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+        
+        .button-group button {
+            flex: 1;
+            min-width: 150px;
+        }
+        
+        .results {
+            margin-top: 20px;
+            padding: 20px;
+            background: white;
+            border-radius: 8px;
+            border: 1px solid #ddd;
+        }
+        
+        .image-container {
+            text-align: center;
+            margin: 20px 0;
+        }
+        
+        .image-container img {
+            max-width: 100%;
+            max-height: 500px;
+            border-radius: 8px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 20px;
+            color: #7f8c8d;
+        }
+        
+        .error {
+            background: #e74c3c;
+            color: white;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 10px 0;
+        }
+        
+        .success {
+            background: #27ae60;
+            color: white;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 10px 0;
+        }
+        
+        .info {
+            background: #3498db;
+            color: white;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 10px 0;
+        }
+        
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+        }
+        
+        .status {
+            padding: 10px;
+            border-radius: 5px;
+            margin: 10px 0;
+            font-weight: 600;
+        }
+        
+        .status.healthy {
+            background: #d5f4e6;
+            color: #27ae60;
+            border: 1px solid #27ae60;
+        }
+        
+        .status.error {
+            background: #fadbd8;
+            color: #e74c3c;
+            border: 1px solid #e74c3c;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🪙 AIQ Challenge 1</h1>
+            <p>Coin Detection & Analysis API</p>
+        </div>
+        
+        <div class="main-content">
+            <!-- LEFT COLUMN -->
+            <div class="left-column">
+                <!-- API Status -->
+                <div class="section">
+                    <h2>📊 API Status & Health</h2>
+                    <div id="api-status" class="status">Checking API status...</div>
+                    <div class="button-group">
+                        <button onclick="checkApiStatus()">Refresh Status</button>
+                        <button onclick="checkApiDocs()">Open API Docs</button>
+                    </div>
+                </div>
+                
+                <!-- Image Management -->
+                <div class="section">
+                    <h2>📤 Image Management</h2>
+                    <div class="form-group">
+                        <label for="imageFile">Upload New Image:</label>
+                        <input type="file" id="imageFile" accept="image/*">
+                    </div>
+                    <div class="button-group">
+                        <button onclick="uploadImage()">Upload Image</button>
+                        <button onclick="listImages()">List All Images</button>
+                    </div>
+                    <div id="upload-result"></div>
+                    
+                    <div class="form-group" style="margin-top: 20px;">
+                        <label for="getImageId">Get Specific Image:</label>
+                        <input type="number" id="getImageId" placeholder="Enter image ID" min="1">
+                        <button onclick="getImage()" style="margin-top: 10px;">Get Image Details</button>
+                    </div>
+                    <div id="image-details-result"></div>
+                </div>
+                
+                <!-- Detection & Analysis -->
+                <div class="section">
+                    <h2>🔍 Detection & Analysis</h2>
+                    <div class="form-group">
+                        <label for="imageId">Image ID for Detection:</label>
+                        <input type="number" id="imageId" placeholder="Enter image ID" min="1">
+                    </div>
+                    <div class="button-group">
+                        <button onclick="runDetection()">Run Detection</button>
+                        <button onclick="getImageObjects()">Get Image Objects</button>
+                    </div>
+                    <div id="detection-result"></div>
+                </div>
+                
+                <!-- Object Management -->
+                <div class="section">
+                    <h2>📋 Object Management</h2>
+                    <div class="form-group">
+                        <label for="objImageId">Filter by Image ID (optional):</label>
+                        <input type="number" id="objImageId" placeholder="Leave empty for all objects" min="1">
+                    </div>
+                    <div class="form-group">
+                        <label for="objectId">Get Specific Object:</label>
+                        <input type="text" id="objectId" placeholder="Enter object ID">
+                    </div>
+                    <div class="button-group">
+                        <button onclick="listObjects()">List Objects</button>
+                        <button onclick="getObjectDetails()">Get Object Details</button>
+                        <button onclick="deleteObjects()">Delete All Objects</button>
+                    </div>
+                    <div id="objects-result"></div>
+                </div>
+            </div>
+            
+            <!-- RIGHT COLUMN -->
+            <div class="right-column">
+                <!-- Visualization Tools -->
+                <div class="section">
+                    <h2>🎨 Visualization Tools</h2>
+                    <div class="form-group">
+                        <label for="visImageId">Image ID for Visualization:</label>
+                        <input type="number" id="visImageId" placeholder="Enter image ID" min="1">
+                    </div>
+                    <div class="form-group">
+                        <label for="resultType">Visualization Type:</label>
+                        <select id="resultType">
+                            <option value="combined">Combined (Detection + Mask)</option>
+                            <option value="detection">Detection Only</option>
+                            <option value="mask">Mask Only</option>
+                        </select>
+                    </div>
+                    <div class="button-group">
+                        <button onclick="generateVisualization()">Generate Visualization</button>
+                        <button onclick="saveAllVisualizations()">Save All Visualizations</button>
+                    </div>
+                    <div id="visualization-result"></div>
+                </div>
+                
+                <!-- Batch Operations -->
+                <div class="section">
+                    <h2>⚡ Batch Operations</h2>
+                    <div class="form-group">
+                        <label for="batchImageIds">Image IDs (comma-separated):</label>
+                        <input type="text" id="batchImageIds" placeholder="1,2,3,4,5">
+                    </div>
+                    <div class="button-group">
+                        <button onclick="batchDetection()">Batch Detection</button>
+                        <button onclick="batchVisualization()">Batch Visualization</button>
+                    </div>
+                    <div id="batch-result"></div>
+                </div>
+                
+                <!-- Advanced Features -->
+                <div class="section">
+                    <h2>🔧 Advanced Features</h2>
+                    <div class="button-group">
+                        <button onclick="exportData()">Export All Data</button>
+                        <button onclick="clearAllData()">Clear All Data</button>
+                        <button onclick="systemInfo()">System Information</button>
+                    </div>
+                    <div id="advanced-result"></div>
+                </div>
+                
+                <!-- Quick Actions -->
+                <div class="section">
+                    <h2>⚡ Quick Actions</h2>
+                    <div class="button-group">
+                        <button onclick="quickTest()">Quick Test</button>
+                        <button onclick="loadSampleImage()">Load Sample Image</button>
+                        <button onclick="showStats()">Show Statistics</button>
+                    </div>
+                    <div id="quick-actions-result"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // API configuration - will be set based on environment
+        const API_BASE = 'http://10.227.228.64:8000/api/v1';
+        
+        // Check API status on load
+        window.onload = function() {
+            checkApiStatus();
+        };
+        
+        async function checkApiStatus() {
+            try {
+                const response = await fetch(`${API_BASE.replace('/api/v1', '')}/health`);
+                const data = await response.json();
+                
+                const statusDiv = document.getElementById('api-status');
+                if (data.status === 'healthy') {
+                    statusDiv.className = 'status healthy';
+                    statusDiv.textContent = '✅ API is healthy and running';
+                } else {
+                    statusDiv.className = 'status error';
+                    statusDiv.textContent = '❌ API is not responding properly';
+                }
+            } catch (error) {
+                const statusDiv = document.getElementById('api-status');
+                statusDiv.className = 'status error';
+                statusDiv.textContent = '❌ Cannot connect to API: ' + error.message;
+            }
+        }
+        
+        async function uploadImage() {
+            const fileInput = document.getElementById('imageFile');
+            const resultDiv = document.getElementById('upload-result');
+            
+            if (!fileInput.files[0]) {
+                showError(resultDiv, 'Please select an image file');
+                return;
+            }
+            
+            const formData = new FormData();
+            formData.append('file', fileInput.files[0]);
+            
+            try {
+                showLoading(resultDiv, 'Uploading image...');
+                
+                const response = await fetch(`${API_BASE}/images/upload`, {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    showSuccess(resultDiv, `Image uploaded successfully! ID: ${data.image_id}`);
+                    document.getElementById('imageId').value = data.image_id;
+                    document.getElementById('visImageId').value = data.image_id;
+                } else {
+                    showError(resultDiv, data.detail || 'Upload failed');
+                }
+            } catch (error) {
+                showError(resultDiv, 'Upload failed: ' + error.message);
+            }
+        }
+        
+        async function runDetection() {
+            const imageId = document.getElementById('imageId').value;
+            const resultDiv = document.getElementById('detection-result');
+            
+            if (!imageId) {
+                showError(resultDiv, 'Please enter an image ID');
+                return;
+            }
+            
+            try {
+                showLoading(resultDiv, 'Running detection...');
+                
+                const response = await fetch(`${API_BASE}/objects/detect/${imageId}`, {
+                    method: 'POST'
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    showSuccess(resultDiv, `Detection completed! Found ${data.object_count} objects`);
+                } else {
+                    showError(resultDiv, data.detail || 'Detection failed');
+                }
+            } catch (error) {
+                showError(resultDiv, 'Detection failed: ' + error.message);
+            }
+        }
+        
+        async function generateVisualization() {
+            const imageId = document.getElementById('visImageId').value;
+            const resultType = document.getElementById('resultType').value;
+            const resultDiv = document.getElementById('visualization-result');
+            
+            if (!imageId) {
+                showError(resultDiv, 'Please enter an image ID');
+                return;
+            }
+            
+            try {
+                showLoading(resultDiv, 'Generating visualization...');
+                
+                const response = await fetch(`${API_BASE}/objects/visual/${imageId}?result_type=${resultType}`);
+                
+                if (response.ok) {
+                    const blob = await response.blob();
+                    const imageUrl = URL.createObjectURL(blob);
+                    
+                    resultDiv.innerHTML = `
+                        <div class="success">Visualization generated successfully!</div>
+                        <div class="image-container">
+                            <img src="${imageUrl}" alt="Visualization">
+                        </div>
+                        <button onclick="downloadImage('${imageUrl}', 'image_${imageId}_${resultType}.jpg')">Download Image</button>
+                    `;
+                } else {
+                    const data = await response.json();
+                    showError(resultDiv, data.detail || 'Visualization failed');
+                }
+            } catch (error) {
+                showError(resultDiv, 'Visualization failed: ' + error.message);
+            }
+        }
+        
+        async function saveAllVisualizations() {
+            const imageId = document.getElementById('visImageId').value;
+            const resultDiv = document.getElementById('visualization-result');
+            
+            if (!imageId) {
+                showError(resultDiv, 'Please enter an image ID');
+                return;
+            }
+            
+            try {
+                showLoading(resultDiv, 'Saving all visualizations...');
+                
+                const response = await fetch(`${API_BASE}/objects/visual/${imageId}/save`, {
+                    method: 'POST'
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    showSuccess(resultDiv, `All visualizations saved! Check the results directory.`);
+                } else {
+                    showError(resultDiv, data.detail || 'Save failed');
+                }
+            } catch (error) {
+                showError(resultDiv, 'Save failed: ' + error.message);
+            }
+        }
+        
+        async function listImages() {
+            const resultDiv = document.getElementById('upload-result');
+            
+            try {
+                showLoading(resultDiv, 'Loading images...');
+                
+                const response = await fetch(`${API_BASE}/images/`);
+                const data = await response.json();
+                
+                if (response.ok) {
+                    let html = '<div class="success">Images loaded successfully!</div><div class="results">';
+                    data.forEach(img => {
+                        html += `
+                            <div style="padding: 10px; border: 1px solid #ddd; margin: 5px 0; border-radius: 5px;">
+                                <strong>ID: ${img.id}</strong> - ${img.original_filename}<br>
+                                <small>Size: ${img.width}x${img.height} | Uploaded: ${new Date(img.created_at).toLocaleString()}</small>
+                            </div>
+                        `;
+                    });
+                    html += '</div>';
+                    resultDiv.innerHTML = html;
+                } else {
+                    showError(resultDiv, 'Failed to load images');
+                }
+            } catch (error) {
+                showError(resultDiv, 'Failed to load images: ' + error.message);
+            }
+        }
+        
+        async function listObjects() {
+            const imageId = document.getElementById('objImageId').value;
+            const resultDiv = document.getElementById('objects-result');
+            
+            try {
+                showLoading(resultDiv, 'Loading objects...');
+                
+                const url = imageId ? `${API_BASE}/objects/?image_id=${imageId}` : `${API_BASE}/objects/`;
+                const response = await fetch(url);
+                const data = await response.json();
+                
+                if (response.ok) {
+                    let html = '<div class="success">Objects loaded successfully!</div><div class="results">';
+                    data.forEach(obj => {
+                        html += `
+                            <div style="padding: 10px; border: 1px solid #ddd; margin: 5px 0; border-radius: 5px;">
+                                <strong>Object ID: ${obj.object_id}</strong><br>
+                                <small>Image: ${obj.image_filename} | Confidence: ${obj.confidence} | Radius: ${obj.radius}</small><br>
+                                <small>Centroid: (${obj.centroid.x}, ${obj.centroid.y}) | Bbox: (${obj.bbox.x1}, ${obj.bbox.y1}, ${obj.bbox.x2}, ${obj.bbox.y2})</small>
+                            </div>
+                        `;
+                    });
+                    html += '</div>';
+                    resultDiv.innerHTML = html;
+                } else {
+                    showError(resultDiv, 'Failed to load objects');
+                }
+            } catch (error) {
+                showError(resultDiv, 'Failed to load objects: ' + error.message);
+            }
+        }
+        
+        async function deleteObjects() {
+            const resultDiv = document.getElementById('objects-result');
+            
+            if (!confirm('Are you sure you want to delete ALL objects? This action cannot be undone.')) {
+                return;
+            }
+            
+            try {
+                showLoading(resultDiv, 'Deleting all objects...');
+                
+                const response = await fetch(`${API_BASE}/objects/`, {
+                    method: 'DELETE'
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    showSuccess(resultDiv, `Deleted ${data.deleted_count} objects successfully!`);
+                } else {
+                    showError(resultDiv, data.detail || 'Delete failed');
+                }
+            } catch (error) {
+                showError(resultDiv, 'Delete failed: ' + error.message);
+            }
+        }
+        
+        function downloadImage(imageUrl, filename) {
+            const link = document.createElement('a');
+            link.href = imageUrl;
+            link.download = filename;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+        
+        function showLoading(element, message) {
+            element.innerHTML = `<div class="loading">${message}</div>`;
+        }
+        
+        function showError(element, message) {
+            element.innerHTML = `<div class="error">❌ ${message}</div>`;
+        }
+        
+        function showSuccess(element, message) {
+            element.innerHTML = `<div class="success">✅ ${message}</div>`;
+        }
+        
+        // NEW FUNCTIONS FOR ADDITIONAL ENDPOINTS
+        
+        async function checkApiDocs() {
+            window.open(`${API_BASE.replace('/api/v1', '')}/docs`, '_blank');
+        }
+        
+        async function getImage() {
+            const imageId = document.getElementById('getImageId').value;
+            const resultDiv = document.getElementById('image-details-result');
+            
+            if (!imageId) {
+                showError(resultDiv, 'Please enter an image ID');
+                return;
+            }
+            
+            try {
+                showLoading(resultDiv, 'Loading image details...');
+                
+                const response = await fetch(`${API_BASE}/images/${imageId}`);
+                const data = await response.json();
+                
+                if (response.ok) {
+                    let html = '<div class="success">Image details loaded successfully!</div><div class="results">';
+                    html += `
+                        <div style="padding: 15px; border: 1px solid #ddd; margin: 10px 0; border-radius: 5px; background: white;">
+                            <strong>Image ID: ${data.id}</strong><br>
+                            <strong>Filename:</strong> ${data.filename}<br>
+                            <strong>Original:</strong> ${data.original_filename}<br>
+                            <strong>Size:</strong> ${data.width}x${data.height} pixels<br>
+                            <strong>File Size:</strong> ${data.file_size} bytes<br>
+                            <strong>Uploaded:</strong> ${new Date(data.created_at).toLocaleString()}<br>
+                            <strong>Path:</strong> ${data.file_path}
+                        </div>
+                    `;
+                    html += '</div>';
+                    resultDiv.innerHTML = html;
+                } else {
+                    showError(resultDiv, data.detail || 'Failed to load image details');
+                }
+            } catch (error) {
+                showError(resultDiv, 'Failed to load image details: ' + error.message);
+            }
+        }
+        
+        async function getImageObjects() {
+            const imageId = document.getElementById('imageId').value;
+            const resultDiv = document.getElementById('detection-result');
+            
+            if (!imageId) {
+                showError(resultDiv, 'Please enter an image ID');
+                return;
+            }
+            
+            try {
+                showLoading(resultDiv, 'Loading image objects...');
+                
+                const response = await fetch(`${API_BASE}/objects/image/${imageId}`);
+                const data = await response.json();
+                
+                if (response.ok) {
+                    let html = '<div class="success">Image objects loaded successfully!</div><div class="results">';
+                    data.forEach(obj => {
+                        html += `
+                            <div style="padding: 10px; border: 1px solid #ddd; margin: 5px 0; border-radius: 5px;">
+                                <strong>Object ID: ${obj.object_id}</strong><br>
+                                <small>Confidence: ${obj.confidence} | Radius: ${obj.radius}</small><br>
+                                <small>Centroid: (${obj.centroid.x}, ${obj.centroid.y}) | Bbox: (${obj.bbox.x1}, ${obj.bbox.y1}, ${obj.bbox.x2}, ${obj.bbox.y2})</small>
+                            </div>
+                        `;
+                    });
+                    html += '</div>';
+                    resultDiv.innerHTML = html;
+                } else {
+                    showError(resultDiv, data.detail || 'Failed to load image objects');
+                }
+            } catch (error) {
+                showError(resultDiv, 'Failed to load image objects: ' + error.message);
+            }
+        }
+        
+        async function getObjectDetails() {
+            const objectId = document.getElementById('objectId').value;
+            const resultDiv = document.getElementById('objects-result');
+            
+            if (!objectId) {
+                showError(resultDiv, 'Please enter an object ID');
+                return;
+            }
+            
+            try {
+                showLoading(resultDiv, 'Loading object details...');
+                
+                const response = await fetch(`${API_BASE}/objects/${objectId}`);
+                const data = await response.json();
+                
+                if (response.ok) {
+                    let html = '<div class="success">Object details loaded successfully!</div><div class="results">';
+                    html += `
+                        <div style="padding: 15px; border: 1px solid #ddd; margin: 10px 0; border-radius: 5px; background: white;">
+                            <strong>Object ID: ${data.object_id}</strong><br>
+                            <strong>Image ID: ${data.image_id}</strong><br>
+                            <strong>Image Filename:</strong> ${data.image_filename}<br>
+                            <strong>Confidence:</strong> ${data.confidence}<br>
+                            <strong>Radius:</strong> ${data.radius}<br>
+                            <strong>Centroid:</strong> (${data.centroid.x}, ${data.centroid.y})<br>
+                            <strong>Bounding Box:</strong> (${data.bbox.x1}, ${data.bbox.y1}, ${data.bbox.x2}, ${data.bbox.y2})<br>
+                            <strong>Created:</strong> ${new Date(data.created_at).toLocaleString()}
+                        </div>
+                    `;
+                    html += '</div>';
+                    resultDiv.innerHTML = html;
+                } else {
+                    showError(resultDiv, data.detail || 'Failed to load object details');
+                }
+            } catch (error) {
+                showError(resultDiv, 'Failed to load object details: ' + error.message);
+            }
+        }
+        
+        async function batchDetection() {
+            const imageIds = document.getElementById('batchImageIds').value;
+            const resultDiv = document.getElementById('batch-result');
+            
+            if (!imageIds) {
+                showError(resultDiv, 'Please enter image IDs');
+                return;
+            }
+            
+            const ids = imageIds.split(',').map(id => id.trim()).filter(id => id);
+            if (ids.length === 0) {
+                showError(resultDiv, 'Please enter valid image IDs');
+                return;
+            }
+            
+            try {
+                showLoading(resultDiv, `Running detection on ${ids.length} images...`);
+                
+                let results = [];
+                for (let i = 0; i < ids.length; i++) {
+                    const imageId = ids[i];
+                    try {
+                        const response = await fetch(`${API_BASE}/objects/detect/${imageId}`, {
+                            method: 'POST'
+                        });
+                        const data = await response.json();
+                        results.push({ imageId, success: response.ok, data });
+                    } catch (error) {
+                        results.push({ imageId, success: false, error: error.message });
+                    }
+                }
+                
+                let html = '<div class="success">Batch detection completed!</div><div class="results">';
+                results.forEach(result => {
+                    if (result.success) {
+                        html += `<div style="padding: 10px; border: 1px solid #27ae60; margin: 5px 0; border-radius: 5px; background: #d5f4e6;">
+                            <strong>Image ${result.imageId}:</strong> ✅ Found ${result.data.object_count} objects
+                        </div>`;
+                    } else {
+                        html += `<div style="padding: 10px; border: 1px solid #e74c3c; margin: 5px 0; border-radius: 5px; background: #fadbd8;">
+                            <strong>Image ${result.imageId}:</strong> ❌ ${result.error || 'Failed'}
+                        </div>`;
+                    }
+                });
+                html += '</div>';
+                resultDiv.innerHTML = html;
+            } catch (error) {
+                showError(resultDiv, 'Batch detection failed: ' + error.message);
+            }
+        }
+        
+        async function batchVisualization() {
+            const imageIds = document.getElementById('batchImageIds').value;
+            const resultDiv = document.getElementById('batch-result');
+            
+            if (!imageIds) {
+                showError(resultDiv, 'Please enter image IDs');
+                return;
+            }
+            
+            const ids = imageIds.split(',').map(id => id.trim()).filter(id => id);
+            if (ids.length === 0) {
+                showError(resultDiv, 'Please enter valid image IDs');
+                return;
+            }
+            
+            try {
+                showLoading(resultDiv, `Generating visualizations for ${ids.length} images...`);
+                
+                let results = [];
+                for (let i = 0; i < ids.length; i++) {
+                    const imageId = ids[i];
+                    try {
+                        const response = await fetch(`${API_BASE}/objects/visual/${imageId}/save`, {
+                            method: 'POST'
+                        });
+                        const data = await response.json();
+                        results.push({ imageId, success: response.ok, data });
+                    } catch (error) {
+                        results.push({ imageId, success: false, error: error.message });
+                    }
+                }
+                
+                let html = '<div class="success">Batch visualization completed!</div><div class="results">';
+                results.forEach(result => {
+                    if (result.success) {
+                        html += `<div style="padding: 10px; border: 1px solid #27ae60; margin: 5px 0; border-radius: 5px; background: #d5f4e6;">
+                            <strong>Image ${result.imageId}:</strong> ✅ Visualizations saved
+                        </div>`;
+                    } else {
+                        html += `<div style="padding: 10px; border: 1px solid #e74c3c; margin: 5px 0; border-radius: 5px; background: #fadbd8;">
+                            <strong>Image ${result.imageId}:</strong> ❌ ${result.error || 'Failed'}
+                        </div>`;
+                    }
+                });
+                html += '</div>';
+                resultDiv.innerHTML = html;
+            } catch (error) {
+                showError(resultDiv, 'Batch visualization failed: ' + error.message);
+            }
+        }
+        
+        async function exportData() {
+            const resultDiv = document.getElementById('advanced-result');
+            
+            try {
+                showLoading(resultDiv, 'Exporting data...');
+                
+                // Get all images
+                const imagesResponse = await fetch(`${API_BASE}/images/`);
+                const images = await imagesResponse.json();
+                
+                // Get all objects
+                const objectsResponse = await fetch(`${API_BASE}/objects/`);
+                const objects = await objectsResponse.json();
+                
+                const exportData = {
+                    timestamp: new Date().toISOString(),
+                    images: images,
+                    objects: objects,
+                    summary: {
+                        total_images: images.length,
+                        total_objects: objects.length
+                    }
+                };
+                
+                const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
+                const url = URL.createObjectURL(blob);
+                
+                const link = document.createElement('a');
+                link.href = url;
+                link.download = `aiq_export_${new Date().toISOString().split('T')[0]}.json`;
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+                
+                showSuccess(resultDiv, `Data exported successfully! ${images.length} images, ${objects.length} objects`);
+            } catch (error) {
+                showError(resultDiv, 'Export failed: ' + error.message);
+            }
+        }
+        
+        async function clearAllData() {
+            const resultDiv = document.getElementById('advanced-result');
+            
+            if (!confirm('Are you sure you want to clear ALL data? This will delete all images and objects. This action cannot be undone.')) {
+                return;
+            }
+            
+            try {
+                showLoading(resultDiv, 'Clearing all data...');
+                
+                // Delete all objects
+                const objectsResponse = await fetch(`${API_BASE}/objects/`, {
+                    method: 'DELETE'
+                });
+                
+                if (objectsResponse.ok) {
+                    showSuccess(resultDiv, 'All data cleared successfully!');
+                } else {
+                    showError(resultDiv, 'Failed to clear data');
+                }
+            } catch (error) {
+                showError(resultDiv, 'Clear data failed: ' + error.message);
+            }
+        }
+        
+        async function systemInfo() {
+            const resultDiv = document.getElementById('advanced-result');
+            
+            try {
+                showLoading(resultDiv, 'Loading system information...');
+                
+                const response = await fetch(`${API_BASE.replace('/api/v1', '')}/health`);
+                const data = await response.json();
+                
+                let html = '<div class="success">System information loaded!</div><div class="results">';
+                html += `
+                    <div style="padding: 15px; border: 1px solid #ddd; margin: 10px 0; border-radius: 5px; background: white;">
+                        <strong>API Status:</strong> ${data.status}<br>
+                        <strong>Timestamp:</strong> ${new Date().toLocaleString()}<br>
+                        <strong>API Base URL:</strong> ${API_BASE}<br>
+                        <strong>Frontend Version:</strong> 2.0.0
+                    </div>
+                `;
+                html += '</div>';
+                resultDiv.innerHTML = html;
+            } catch (error) {
+                showError(resultDiv, 'Failed to load system information: ' + error.message);
+            }
+        }
+        
+        async function quickTest() {
+            const resultDiv = document.getElementById('quick-actions-result');
+            
+            try {
+                showLoading(resultDiv, 'Running quick test...');
+                
+                // Test API health
+                const healthResponse = await fetch(`${API_BASE.replace('/api/v1', '')}/health`);
+                const healthData = await healthResponse.json();
+                
+                // Test images list
+                const imagesResponse = await fetch(`${API_BASE}/images/`);
+                const images = await imagesResponse.json();
+                
+                // Test objects list
+                const objectsResponse = await fetch(`${API_BASE}/objects/`);
+                const objects = await objectsResponse.json();
+                
+                let html = '<div class="success">Quick test completed!</div><div class="results">';
+                html += `
+                    <div style="padding: 15px; border: 1px solid #ddd; margin: 10px 0; border-radius: 5px; background: white;">
+                        <strong>API Health:</strong> ${healthData.status}<br>
+                        <strong>Images Count:</strong> ${images.length}<br>
+                        <strong>Objects Count:</strong> ${objects.length}<br>
+                        <strong>Test Time:</strong> ${new Date().toLocaleString()}
+                    </div>
+                `;
+                html += '</div>';
+                resultDiv.innerHTML = html;
+            } catch (error) {
+                showError(resultDiv, 'Quick test failed: ' + error.message);
+            }
+        }
+        
+        async function loadSampleImage() {
+            const resultDiv = document.getElementById('quick-actions-result');
+            
+            try {
+                showLoading(resultDiv, 'Loading sample image...');
+                
+                // This would load a sample image from the existing images
+                const response = await fetch(`${API_BASE}/images/`);
+                const images = await response.json();
+                
+                if (images.length > 0) {
+                    const sampleImage = images[0];
+                    document.getElementById('imageId').value = sampleImage.id;
+                    document.getElementById('visImageId').value = sampleImage.id;
+                    document.getElementById('getImageId').value = sampleImage.id;
+                    
+                    showSuccess(resultDiv, `Sample image loaded! ID: ${sampleImage.id} - ${sampleImage.original_filename}`);
+                } else {
+                    showError(resultDiv, 'No images available to load as sample');
+                }
+            } catch (error) {
+                showError(resultDiv, 'Failed to load sample image: ' + error.message);
+            }
+        }
+        
+        async function showStats() {
+            const resultDiv = document.getElementById('quick-actions-result');
+            
+            try {
+                showLoading(resultDiv, 'Loading statistics...');
+                
+                const imagesResponse = await fetch(`${API_BASE}/images/`);
+                const images = await imagesResponse.json();
+                
+                const objectsResponse = await fetch(`${API_BASE}/objects/`);
+                const objects = await objectsResponse.json();
+                
+                // Calculate statistics
+                const totalImages = images.length;
+                const totalObjects = objects.length;
+                const avgObjectsPerImage = totalImages > 0 ? (totalObjects / totalImages).toFixed(2) : 0;
+                
+                let html = '<div class="success">Statistics loaded!</div><div class="results">';
+                html += `
+                    <div style="padding: 15px; border: 1px solid #ddd; margin: 10px 0; border-radius: 5px; background: white;">
+                        <strong>Total Images:</strong> ${totalImages}<br>
+                        <strong>Total Objects:</strong> ${totalObjects}<br>
+                        <strong>Average Objects per Image:</strong> ${avgObjectsPerImage}<br>
+                        <strong>Last Updated:</strong> ${new Date().toLocaleString()}
+                    </div>
+                `;
+                html += '</div>';
+                resultDiv.innerHTML = html;
+            } catch (error) {
+                showError(resultDiv, 'Failed to load statistics: ' + error.message);
+            }
+        }
+    </script>
+</body>
+</html>
