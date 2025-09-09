@@ -7,6 +7,10 @@ import numpy as np
 from pathlib import Path
 from features.yolov11 import YOLOv11Detector
 from features.cv_detection import CVDetector, Circle
+from core.logging_config import get_logger
+
+# Set up logger
+logger = get_logger("detection")
 
 class DetectionService:
     def __init__(self, model_path="features/yolov11/weights/best.pt", input_size=640):
@@ -74,26 +78,26 @@ class DetectionService:
         if image is None:
             raise ValueError(f"Could not load image: {image_path}")
         
-        print(f"Processing image: {image_path}")
-        print(f"Image shape: {image.shape}")
+        logger.info(f"Processing image: {image_path}")
+        logger.debug(f"Image shape: {image.shape}")
         
         # Step 1: Detect objects with YOLOv11
-        print("Step 1: Running YOLOv11 detection...")
+        logger.info("Running YOLOv11 detection...")
         yolo_detections = self.yolo_detector.detect(image)
-        print(f"YOLOv11 detected {len(yolo_detections)} potential coin regions")
+        logger.info(f"YOLOv11 detected {len(yolo_detections)} potential coin regions")
         
         # Step 2: Process each detected region with CV detection algorithm
-        print("Step 2: Processing each region with CV detection algorithm...")
+        logger.info("Processing each region with CV detection algorithm...")
         all_circles_with_confidence = []
         
         for i, (x1, y1, x2, y2, conf) in enumerate(yolo_detections):
-            print(f"  Processing region {i+1}/{len(yolo_detections)} (confidence: {conf:.3f})")
+            logger.debug(f"Processing region {i+1}/{len(yolo_detections)} (confidence: {conf:.3f})")
             
             # Crop the region (this modifies x1, y1, x2, y2 with padding)
             cropped = self.crop_region(image, (x1, y1, x2, y2))
             
             if cropped.size == 0:
-                print(f"    Warning: Empty crop for region {i+1}")
+                logger.warning(f"Empty crop for region {i+1}")
                 continue
             
             # Apply detect.py algorithm to cropped region
@@ -107,11 +111,11 @@ class DetectionService:
                 # Use the actual crop coordinates (after padding) as offset
                 transformed_circle = self.transform_circles_to_original([largest_circle], (x1, y1))[0]
                 all_circles_with_confidence.append((transformed_circle, conf))
-                print(f"    Found {len(circles)} circles, kept largest (radius: {largest_circle.r:.1f})")
+                logger.debug(f"Found {len(circles)} circles, kept largest (radius: {largest_circle.r:.1f})")
             else:
-                print(f"    No coins found in this region")
+                logger.debug(f"No coins found in this region")
         
-        print(f"Total coins detected: {len(all_circles_with_confidence)}")
+        logger.info(f"Total coins detected: {len(all_circles_with_confidence)}")
         
         return yolo_detections, all_circles_with_confidence
     

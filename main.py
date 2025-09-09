@@ -7,6 +7,10 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from api.endpoints import images, objects
 from core.config import settings
+from core.logging_config import setup_logging
+
+# Set up logging
+logger = setup_logging(log_level="INFO")
 
 # Create FastAPI app
 app = FastAPI(

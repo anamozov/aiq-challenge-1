@@ -10,9 +10,13 @@ from models.tables import Image, Detection
 from models.schemas import ImageObjectsResponse, ObjectDetailsResponse, ObjectInfo
 from services.detection_service import DetectionService
 from core.config import settings
+from core.logging_config import get_logger
 import uuid
 import os
 from pathlib import Path
+
+# Set up logger
+logger = get_logger("objects")
 
 router = APIRouter()
 
@@ -79,7 +83,7 @@ def detect_objects(image_id: int, db: Session = Depends(get_db)):
                 visual_files = detection_service.save_detection_results(str(image_path), yolo_detections, circle_objects, results_dir)
                 
             except Exception as e:
-                print(f"Warning: Could not save visual results: {e}")
+                logger.warning(f"Could not save visual results: {e}")
                 # Don't fail the detection if visual saving fails
         
         response = {

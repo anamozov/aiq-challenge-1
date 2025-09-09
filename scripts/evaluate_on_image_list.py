@@ -23,6 +23,10 @@ import argparse
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from features.cv_detection.algorithms import segment_circles_and_mask
 from features.cv_detection.models import Circle
+from core.logging_config import setup_logging
+
+# Set up logging
+logger = setup_logging(log_level="INFO")
 
 
 def circle_to_coco_bbox(circle: Tuple[float, float, float]) -> List[float]:
@@ -94,7 +98,7 @@ def filter_ground_truth_for_image_list(ground_truth: Dict[str, List[List[float]]
         if filename in image_set:
             filtered_gt[filename] = bboxes
     
-    print(f"Filtered ground truth from {len(ground_truth)} to {len(filtered_gt)} images")
+    logger.info(f"Filtered ground truth from {len(ground_truth)} to {len(filtered_gt)} images")
     return filtered_gt
 
 
@@ -108,14 +112,14 @@ def find_image_paths(image_list: List[str], search_dirs: List[str]) -> Dict[str,
     for search_dir in search_dirs:
         search_path = Path(search_dir)
         if not search_path.exists():
-            print(f"Warning: Search directory {search_dir} does not exist")
+            logger.warning(f"Search directory {search_dir} does not exist")
             continue
             
         for image_file in search_path.rglob("*.jpg"):
             if image_file.name in image_list:
                 image_paths[image_file.name] = str(image_file)
     
-    print(f"Found {len(image_paths)} out of {len(image_list)} images")
+    logger.info(f"Found {len(image_paths)} out of {len(image_list)} images")
     return image_paths
 
 
@@ -130,16 +134,16 @@ def run_detection_on_image_list(image_paths: Dict[str, str], ground_truth: Dict[
     valid_images = set(image_paths.keys()) & set(ground_truth.keys())
     valid_images = list(valid_images)
     
-    print(f"Running detection on {len(valid_images)} images with both paths and ground truth")
+    logger.info(f"Running detection on {len(valid_images)} images with both paths and ground truth")
     
     for i, filename in enumerate(valid_images):
         image_path = image_paths[filename]
-        print(f"Processing {i+1}/{len(valid_images)}: {filename}")
+        logger.info(f"Processing {i+1}/{len(valid_images)}: {filename}")
         
         # Load image
         image_bgr = cv2.imread(image_path)
         if image_bgr is None:
-            print(f"Warning: Could not load {image_path}")
+            logger.warning(f"Could not load {image_path}")
             continue
         
         # Run detection using the image processing pipeline
@@ -150,10 +154,10 @@ def run_detection_on_image_list(image_paths: Dict[str, str], ground_truth: Dict[
             bbox_list = [circle_to_coco_bbox((c.cx, c.cy, c.r)) for c in circles]
             predictions[filename] = bbox_list
             
-            print(f"  Detected {len(circles)} circles")
+            logger.debug(f"Detected {len(circles)} circles")
             
         except Exception as e:
-            print(f"Error processing {image_path}: {e}")
+            logger.error(f"Error processing {image_path}: {e}")
             predictions[filename] = []
     
     return predictions
@@ -224,7 +228,7 @@ def evaluate_predictions(predictions: Dict[str, List[List[float]]],
     """
     # Get common images
     image_ids = sorted(set(predictions.keys()) & set(ground_truth.keys()))
-    print(f"Evaluating {len(image_ids)} images with IoU threshold {iou_threshold}")
+    logger.info(f"Evaluating {len(image_ids)} images with IoU threshold {iou_threshold}")
 
     agg_tp = agg_fp = agg_fn = 0
     for iid in image_ids:
@@ -233,7 +237,7 @@ def evaluate_predictions(predictions: Dict[str, List[List[float]]],
         gt_bboxes = [tuple(map(float, bbox)) for bbox in ground_truth[iid]]
         
         tp, fp, fn, precision, recall = match_bboxes(pred_bboxes, gt_bboxes, iou_threshold)
-        print(f"image {iid}: TP={tp} FP={fp} FN={fn} P={precision:.3f} R={recall:.3f}")
+        logger.debug(f"image {iid}: TP={tp} FP={fp} FN={fn} P={precision:.3f} R={recall:.3f}")
         agg_tp += tp
         agg_fp += fp
         agg_fn += fn
@@ -244,7 +248,7 @@ def evaluate_predictions(predictions: Dict[str, List[List[float]]],
         f1 = 2 * p * r / (p + r)
     else:
         f1 = 0.0
-    print(f"Overall: P={p:.3f} R={r:.3f} F1={f1:.3f}")
+    logger.info(f"Overall: P={p:.3f} R={r:.3f} F1={f1:.3f}")
     
     return p, r, f1
 
@@ -260,25 +264,25 @@ def main():
     
     args = parser.parse_args()
     
-    print(f"Loading image list from: {args.image_list}")
+    logger.info(f"Loading image list from: {args.image_list}")
     image_list = load_image_list(args.image_list)
-    print(f"Loaded {len(image_list)} images from list")
+    logger.info(f"Loaded {len(image_list)} images from list")
     
-    print(f"Loading COCO annotations from: {args.coco_annotations}")
+    logger.info(f"Loading COCO annotations from: {args.coco_annotations}")
     ground_truth = load_coco_annotations(args.coco_annotations)
-    print(f"Loaded ground truth for {len(ground_truth)} images")
+    logger.info(f"Loaded ground truth for {len(ground_truth)} images")
     
     # Filter ground truth to only include images in the list
     filtered_ground_truth = filter_ground_truth_for_image_list(ground_truth, image_list)
     
     # Find image paths
-    print(f"Searching for images in: {args.search_dirs}")
+    logger.info(f"Searching for images in: {args.search_dirs}")
     image_paths = find_image_paths(image_list, args.search_dirs)
     
     # Run detection
-    print(f"\nRunning image processing-based detection...")
+    logger.info("Running image processing-based detection...")
     predictions = run_detection_on_image_list(image_paths, filtered_ground_truth)
-    print(f"Generated predictions for {len(predictions)} images")
+    logger.info(f"Generated predictions for {len(predictions)} images")
     
     # Save predictions and ground truth
     predictions_file = f"{args.output_prefix}_predictions.json"
@@ -286,20 +290,20 @@ def main():
     
     with open(predictions_file, 'w') as f:
         json.dump(predictions, f, indent=2)
-    print(f"Saved predictions to {predictions_file}")
+    logger.info(f"Saved predictions to {predictions_file}")
     
     with open(gt_file, 'w') as f:
         json.dump(filtered_ground_truth, f, indent=2)
-    print(f"Saved filtered ground truth to {gt_file}")
+    logger.info(f"Saved filtered ground truth to {gt_file}")
     
     # Run evaluation
-    print(f"\nRunning evaluation...")
+    logger.info("Running evaluation...")
     precision, recall, f1 = evaluate_predictions(predictions, filtered_ground_truth, args.iou_threshold)
     
-    print(f"\nEvaluation completed.")
-    print(f"Results: Precision={precision:.3f}, Recall={recall:.3f}, F1={f1:.3f}")
-    print(f"Predictions saved to: {predictions_file}")
-    print(f"Filtered ground truth saved to: {gt_file}")
+    logger.info("Evaluation completed.")
+    logger.info(f"Results: Precision={precision:.3f}, Recall={recall:.3f}, F1={f1:.3f}")
+    logger.info(f"Predictions saved to: {predictions_file}")
+    logger.info(f"Filtered ground truth saved to: {gt_file}")
 
 
 if __name__ == "__main__":
