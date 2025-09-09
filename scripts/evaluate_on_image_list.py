@@ -21,7 +21,8 @@ import argparse
 
 # Add the project root to the path so we can import the detection pipeline
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from app.pipeline.detect import segment_circles_and_mask, Circle
+from features.cv_detection.algorithms import segment_circles_and_mask
+from features.cv_detection.models import Circle
 
 
 def circle_to_coco_bbox(circle: Tuple[float, float, float]) -> List[float]:
