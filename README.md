@@ -89,3 +89,6 @@ aiq-challenge-1/
 - **Frontend Interface**: http://localhost:8080
 - **Health Check**: http://localhost:8000/health
 
+## Disclaimer
+
+GenAI assistance has been used for docstrings, comments, frontend components, documentation, and testing implementation.
