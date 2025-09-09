@@ -232,13 +232,22 @@ def get_visual_results(image_id: int, result_type: str = "combined", db: Session
         image_path = settings.storage_dir / image.file_path
         
         # Convert detections to circles format
+        # Use bbox coordinates for consistency between YOLO boxes and mask circles
         from features.cv_detection.models import Circle
         circles = []
         for detection in detections:
+            # Calculate center and radius from bbox for consistency
+            bbox_center_x = (detection.bbox_x1 + detection.bbox_x2) / 2
+            bbox_center_y = (detection.bbox_y1 + detection.bbox_y2) / 2
+            bbox_width = detection.bbox_x2 - detection.bbox_x1
+            bbox_height = detection.bbox_y2 - detection.bbox_y1
+            # Use the average of width and height as radius for circular approximation
+            bbox_radius = min(bbox_width, bbox_height) / 2
+            
             circle = Circle(
-                cx=detection.centroid_x,
-                cy=detection.centroid_y,
-                r=detection.radius
+                cx=bbox_center_x,
+                cy=bbox_center_y,
+                r=bbox_radius
             )
             circles.append(circle)
         
@@ -313,13 +322,22 @@ def save_visual_results(image_id: int, db: Session = Depends(get_db)):
         image_path = settings.storage_dir / image.file_path
         
         # Convert detections to circles format
+        # Use bbox coordinates for consistency between YOLO boxes and mask circles
         from features.cv_detection.models import Circle
         circles = []
         for detection in detections:
+            # Calculate center and radius from bbox for consistency
+            bbox_center_x = (detection.bbox_x1 + detection.bbox_x2) / 2
+            bbox_center_y = (detection.bbox_y1 + detection.bbox_y2) / 2
+            bbox_width = detection.bbox_x2 - detection.bbox_x1
+            bbox_height = detection.bbox_y2 - detection.bbox_y1
+            # Use the average of width and height as radius for circular approximation
+            bbox_radius = min(bbox_width, bbox_height) / 2
+            
             circle = Circle(
-                cx=detection.centroid_x,
-                cy=detection.centroid_y,
-                r=detection.radius
+                cx=bbox_center_x,
+                cy=bbox_center_y,
+                r=bbox_radius
             )
             circles.append(circle)
         
